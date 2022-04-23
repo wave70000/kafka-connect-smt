@@ -1,4 +1,4 @@
-package org.wave7.kafka;
+package com.mfec.cpm.kafka.connect.smt;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -7,7 +7,6 @@ import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Test;
-import org.wave7.kafka.InsertUuid;
 
 import java.util.Collections;
 import java.util.HashMap;

@@ -1,9 +1,10 @@
-package org.wave7.kafka;
+package com.mfec.cpm.kafka.connect.smt;
 
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -13,8 +14,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
@@ -23,19 +23,30 @@ public abstract class ConvertOperation<R extends ConnectRecord<R>> implements Tr
     public static final String OVERVIEW_DOC =
             "Convert Operation type";
     private interface ConfigName {
-        String OP_FIELD_NAME = "operation.field.name";
+        String OP_FIELD_NAME = "operation.field";
+        String NEW_FIELD_NAME = "new.field";
+        String WORD_MAPPING = "convert.mapping";
     }
+
     public static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(ConfigName.OP_FIELD_NAME, ConfigDef.Type.STRING, "op", ConfigDef.Importance.HIGH,
-                    "Field name for Operation Type");
+                    "Field name for Operation Type")
+            .define(ConfigName.NEW_FIELD_NAME, ConfigDef.Type.STRING, "new_field", ConfigDef.Importance.HIGH,
+                    "New field name")
+            .define(ConfigName.WORD_MAPPING, ConfigDef.Type.LIST, Collections.EMPTY_LIST, ConfigDef.Importance.HIGH,
+                    "List Mapping");
     private static final String PURPOSE = "convert operation type word";
     private String fieldName;
+    private String newFieldName;
+    private Map<String,String> mapping;
     private Cache<Schema, Schema> schemaUpdateCache;
 
     @Override
     public void configure(Map<String, ?> props) {
         final SimpleConfig config = new SimpleConfig(CONFIG_DEF, props);
         fieldName = config.getString(ConfigName.OP_FIELD_NAME);
+        newFieldName = config.getString(ConfigName.NEW_FIELD_NAME);
+        mapping = parseMapping(config.getList(ConfigName.WORD_MAPPING));
 
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
     }
@@ -43,7 +54,6 @@ public abstract class ConvertOperation<R extends ConnectRecord<R>> implements Tr
     @Override
     public R apply(R record) {
         final Schema schema = operatingSchema(record);
-        System.out.println(schema);
         if (operatingSchema(record) == null) {
             return applySchemaless(record);
         } else {
@@ -56,7 +66,7 @@ public abstract class ConvertOperation<R extends ConnectRecord<R>> implements Tr
             final Map<String, Object> value = requireMap(operatingValue(record), PURPOSE);
             final Map<String, Object> updatedValue = new HashMap<>(value);
 
-            updatedValue.put("ReqType", getOperation(value.get("op")));
+            updatedValue.put(newFieldName, getMapping(value.get(fieldName)));
 
             return newRecord(record, null, updatedValue);
         }
@@ -77,11 +87,10 @@ public abstract class ConvertOperation<R extends ConnectRecord<R>> implements Tr
         for (Field field : value.schema().fields()) {
             updatedValue.put(field.name(), value.get(field));
             if (field.name().contains(fieldName)){
-                updatedValue.put("ReqType", getOperation(value.get(field)));
+                updatedValue.put(newFieldName, getMapping(value.get(fieldName)));
             }
         }
 
-//        updatedValue.put("ReqType", "TestSchema");
         return newRecord(record, updatedSchema, updatedValue);
     }
 
@@ -90,23 +99,27 @@ public abstract class ConvertOperation<R extends ConnectRecord<R>> implements Tr
         for (Field field: schema.fields()) {
             builder.field(field.name(), field.schema());
         }
-        builder.field("ReqType", Schema.OPTIONAL_STRING_SCHEMA);
+        builder.field(newFieldName, Schema.OPTIONAL_STRING_SCHEMA);
         return builder.build();
     }
 
-    private String getOperation(Object value) {
+    private String getMapping(Object value) {
         if (value == null) {
             return null;
-        } else if (value == "c") {
-            return "Add";
-        } else if (value == "r") {
-            return "Add";
-        } else if (value == "u") {
-            return "Edit";
-        } else if (value == "d") {
-            return "Delete";
         }
-        return "Not match";
+        return mapping.getOrDefault(value, null);
+    }
+
+    static Map<String,String> parseMapping(List<String> mappings) {
+        final Map<String, String> m = new HashMap<>();
+        for(String mapping : mappings) {
+            final String[] parts = mapping.split(":");
+            if (parts.length != 2) {
+                throw new ConfigException(ConfigName.WORD_MAPPING, mappings, "Invalid Mapping");
+            }
+            m.put(parts[0],parts[1]);
+        }
+        return m;
     }
 
     @Override

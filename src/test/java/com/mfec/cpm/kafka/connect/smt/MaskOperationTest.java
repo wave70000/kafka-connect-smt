@@ -1,6 +1,5 @@
-package org.wave7.kafka;
+package com.mfec.cpm.kafka.connect.smt;
 
-import junit.framework.TestCase;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;

@@ -1,4 +1,4 @@
-package org.wave7.kafka;
+package com.mfec.cpm.kafka.connect.smt;
 
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -9,18 +9,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Values;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.NonEmptyListValidator;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
@@ -86,7 +81,6 @@ public abstract class MaskOperation<R extends ConnectRecord<R>> implements Trans
     }
 
     private R applySchemaless(R record) {
-        System.out.println(record);
         if (record.value() != null) {
             final Map<String, Object> value = requireMap(operatingValue(record), PURPOSE);
             final HashMap<String, Object> updatedValue = new HashMap<>(value);
@@ -99,7 +93,6 @@ public abstract class MaskOperation<R extends ConnectRecord<R>> implements Trans
     }
 
     private R applyWithSchema(R record) {
-        System.out.println(record);
         final Struct value = requireStruct(operatingValue(record), PURPOSE);
         final Struct updatedValue = new Struct(value.schema());
         for (Field field : value.schema().fields()) {
@@ -142,16 +135,16 @@ public abstract class MaskOperation<R extends ConnectRecord<R>> implements Trans
 //        }
         try {
             if (value.toString().equals("r")) {
-                System.out.println("Add");
+//                System.out.println("Add");
                 return "Add";
             } else if (value.toString().equals("c")) {
-                System.out.println("Add");
+//                System.out.println("Add");
                 return "Add";
             } else if (value.toString().equals("u")) {
-                System.out.println("Edit");
+//                System.out.println("Edit");
                 return "Edit";
             } else if (value.toString().equals("d")) {
-                System.out.println("Delete");
+//                System.out.println("Delete");
                 return "Delete";
             }
             return "Not Match";

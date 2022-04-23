@@ -1,6 +1,5 @@
-package org.wave7.kafka;
+package com.mfec.cpm.kafka.connect.smt;
 
-import junit.framework.TestCase;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -27,9 +26,9 @@ public class ExtractFieldFromStructTest {
 
     @Test(expected = DataException.class)
     public void topLevelStructRequired() {
-        xform.configure(Collections.singletonMap("field.name", "table"));
-        xform.configure(Collections.singletonMap("struct.field.name", "source"));
-        xform.configure(Collections.singletonMap("new.field.name", "tableName"));
+        xform.configure(Collections.singletonMap("field", "table"));
+        xform.configure(Collections.singletonMap("struct.field", "source"));
+        xform.configure(Collections.singletonMap("new.field", "tableName"));
 
         xform.apply(new SourceRecord(null, null, "test", 0, Schema.INT32_SCHEMA, 42));
     }
@@ -37,9 +36,9 @@ public class ExtractFieldFromStructTest {
     @Test
     public void copySchemaAndExtractField() {
         final Map<String, Object> props = new HashMap<>();
-        props.put("field.name", "table");
-        props.put("struct.field.name", "source");
-        props.put("new.field.name", "tableName");
+        props.put("field", "table");
+        props.put("struct.field", "source");
+        props.put("new.field", "tableName");
         xform.configure(props);
 
         final Schema sourceFieldSchema = SchemaBuilder.struct().name("sourceField").version(1).doc("doc")
