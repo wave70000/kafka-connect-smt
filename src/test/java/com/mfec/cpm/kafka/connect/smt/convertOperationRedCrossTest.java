@@ -12,11 +12,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
-public class convertOperationTest {
+public class convertOperationRedCrossTest {
 
-    private ConvertOperation<SourceRecord> xform = new ConvertOperation.Value<>();
+    private ConvertOperationRedCross<SourceRecord> xform = new ConvertOperationRedCross.Value<>();
 
     @After
     public void tearDown() throws Exception {
@@ -28,6 +28,8 @@ public class convertOperationTest {
         xform.configure(Collections.singletonMap("operation.field", "op"));
         xform.configure(Collections.singletonMap("new.field", "reqType"));
         xform.configure(Collections.singletonMap("convert.mapping", "c:Add,r:Add,u:Edit,d:Delete"));
+        xform.configure(Collections.singletonMap("delete.field", "IsDeleted"));
+
         xform.apply(new SourceRecord(null, null, "", 0, Schema.INT32_SCHEMA, 42));
     }
 
@@ -36,10 +38,12 @@ public class convertOperationTest {
         final String operationField = "op";
         final String newFieldName = "reqType";
         final String mappingField = "c:Add,r:Add,u:Edit,d:Delete";
+        final String deleteField = "IsDeleted";
         final Map<String, Object> props = new HashMap<>();
         props.put("operation.field", operationField);
         props.put("new.field", newFieldName);
         props.put("convert.mapping", mappingField);
+        props.put("delete.field", deleteField);
         xform.configure(props);
 
         final Schema sourceFieldSchema = SchemaBuilder.struct().name("sourceField").version(1).doc("doc")
@@ -52,47 +56,46 @@ public class convertOperationTest {
                 .put("table","Employees");
 
         final Schema paramFieldSchema = SchemaBuilder.struct().name("paramField").version(1).doc("doc")
-                .field("orgID",Schema.OPTIONAL_STRING_SCHEMA)
-                .field("isDeleted",Schema.OPTIONAL_INT32_SCHEMA);
+                .field("IsInactive",Schema.OPTIONAL_STRING_SCHEMA)
+                .field("IsDeleted",Schema.OPTIONAL_STRING_SCHEMA)
+                .field("FixDate",Schema.OPTIONAL_STRING_SCHEMA)
+                .field("IsClosyear",Schema.OPTIONAL_STRING_SCHEMA)
+                .field("testField",Schema.OPTIONAL_STRING_SCHEMA);
         final Struct paramFieldValue = new Struct(paramFieldSchema)
-                .put("orgID","10231321312")
-                .put("isDeleted",0);
+                .put("IsInactive","1")
+                .put("IsDeleted","1")
+                .put("FixDate","1")
+                .put("IsClosyear","1")
+                .put("testField","false");
 
         final Schema valueSchema = SchemaBuilder.struct().name("name").version(1).doc("doc")
-                .field("param",Schema.OPTIONAL_STRING_SCHEMA)
+                .field("param",paramFieldSchema)
                 .field("source",sourceFieldSchema)
                 .field("op",Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ts_ms",Schema.OPTIONAL_STRING_SCHEMA)
                 .field("requestAppId",Schema.OPTIONAL_STRING_SCHEMA);
         final Struct value = new Struct(valueSchema)
-                .put("param","testParam")
+                .put("param",paramFieldValue)
                 .put("source",sourceFieldValue)
                 .put("op","c")
                 .put("ts_ms", "1650444582336")
-                .put("requestAppId","HRMI");
-
-
+                .put("requestAppId","Kafka");
         final SourceRecord employee = new SourceRecord(null, null, "test", 0, valueSchema, value);
         final SourceRecord transformedEmployee = xform.apply(employee);
 
+        assertEquals("1", ((Struct)employee.value()).getStruct("param").get("IsDeleted"));
+        assertEquals("1", ((Struct)transformedEmployee.value()).getStruct("param").get("IsDeleted"));
+        assertEquals("c", ((Struct) employee.value()).get(operationField));
         assertEquals("c", ((Struct) transformedEmployee.value()).get(operationField));
-        assertEquals("Add", ((Struct) transformedEmployee.value()).get(newFieldName));
 
-//        assertEquals(simpleStructSchema.name(), transformRecordMssql.valueSchema().name());
-//        assertEquals(simpleStructSchema.version(), transformRecordMssql.valueSchema().version());
-//        assertEquals(simpleStructSchema.doc(), transformRecordMssql.valueSchema().doc());
-//        assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformRecordMssql.valueSchema().field("op").schema());
+        assertEquals("Delete", ((Struct) transformedEmployee.value()).get(newFieldName));
+
 
 
     }
 
     @Test
     public void schemalessInsertUuidField() {
-//        final Map<String, Object> props = new HashMap<>();
-//        props.put("operation.field.name", "op");
-//        xform.configure(props);
-//        final SourceRecord record = new SourceRecord(null, null, "test", 0,
-//                null, Collections.singletonMap("op", "c"));
-//        final SourceRecord transformedRecord = xform.apply(record);
+
     }
 }
